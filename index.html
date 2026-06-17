@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 SPACEMAN</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        body { font-family: 'Press Start 2P', sans-serif; background: #0a0a1f; color: white; text-align:center; margin:0; padding:15px; }
+        .container { max-width: 650px; margin:auto; background:#1a1a2e; padding:20px; border:4px solid #22d3ee; border-radius:15px; }
+        button { width:100%; padding:15px; margin:8px 0; font-size:18px; border:none; border-radius:50px; cursor:pointer; font-weight:bold; }
+        .btn-blue { background:#22d3ee; color:black; }
+        .btn-green { background:#22c55e; color:black; }
+        .btn-yellow { background:#facc15; color:black; }
+        .btn-red { background:#ef4444; color:white; }
+        input, select { width:90%; padding:12px; margin:8px 0; background:#334155; color:white; border:none; border-radius:8px; }
+        #multiplier { font-size: 52px; margin: 20px 0; color: #22d3ee; text-shadow: 0 0 10px #22d3ee; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🚀 SPACEMAN</h1>
+
+    <!-- AUTH PAGE -->
+    <div id="authPage">
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()" class="btn-blue">LOGIN</button>
+        <button onclick="register()" class="btn-green">DAFTAR</button>
+        <button onclick="topUp()" class="btn-yellow">💵 TOP UP</button>
+    </div>
+
+    <!-- GAME PAGE -->
+    <div id="gamePage" style="display:none;">
+        <p>User: <b id="currUser"></b> | Saldo: <span id="saldo" style="color:#22d3ee;">Rp 0</span></p>
+        
+        <button onclick="refreshSaldo()" class="btn-green">🔄 REFRESH SALDO</button>
+        <button onclick="showWithdrawForm()" class="btn-red">💸 TARIK SALDO</button>
+        <button onclick="topUp()" class="btn-yellow">💵 TOP UP</button>
+
+        <input type="number" id="taruhan" value="5000" style="width:90%;padding:12px;margin:10px 0;">
+        
+        <button id="startBtn" onclick="startSpaceman()" class="btn-blue">🚀 TERBANG!</button>
+        <button id="cashoutBtn" onclick="cashOut()" style="display:none; background:#facc15; color:black;">💰 CASH OUT</button>
+        
+        <h2 id="multiplier">1.00x</h2>
+    </div>
+
+    <!-- WITHDRAW FORM -->
+    <div id="withdrawForm" style="display:none; margin-top:20px;">
+        <h3>💸 Tarik Saldo</h3>
+        <input type="number" id="withdrawAmount" placeholder="Jumlah">
+        <select id="ewalletType">
+            <option value="">Pilih E-Wallet</option>
+            <option value="Dana">Dana</option>
+            <option value="OVO">OVO</option>
+            <option value="GoPay">GoPay</option>
+        </select>
+        <input type="text" id="ewalletNumber" placeholder="Nomor E-Wallet">
+        <button onclick="submitWithdraw()" class="btn-red">KIRIM PENARIKAN</button>
+        <button onclick="hideWithdrawForm()" style="background:#64748b;">BATAL</button>
+    </div>
+</div>
+
+<script>
+    let currentUser = null;
+    let users = {};
+    let withdrawals = JSON.parse(localStorage.getItem('spacemanWithdrawals')) || [];
+
+    function loadUsers() {
+        users = JSON.parse(localStorage.getItem('spacemanUsers')) || {};
+    }
+
+    function saveData() {
+        localStorage.setItem('spacemanUsers', JSON.stringify(users));
+        localStorage.setItem('spacemanWithdrawals', JSON.stringify(withdrawals));
+    }
+
+    function register() {
+        let user = document.getElementById('username').value.trim().toLowerCase();
+        let pass = document.getElementById('password').value.trim();
+        if (!user || !pass) return alert("Isi username & password!");
+
+        loadUsers();
+        if (users[user]) return alert("Username sudah ada!");
+
+        users[user] = {password: pass, saldo: 0};
+        saveData();
+        alert("✅ Akun berhasil dibuat! Silakan login.");
+    }
+
+    function login() {
+        let user = document.getElementById('username').value.trim().toLowerCase();
+        let pass = document.getElementById('password').value.trim();
+        
+        loadUsers();
+        if (users[user] && users[user].password === pass) {
+            currentUser = user;
+            localStorage.setItem('currentUser', currentUser);
+            
+            document.getElementById('authPage').style.display = 'none';
+            document.getElementById('gamePage').style.display = 'block';
+            document.getElementById('currUser').textContent = user;
+            updateSaldo();
+        } else {
+            alert("❌ Username atau password salah!");
+        }
+    }
+
+    function updateSaldo() {
+        loadUsers();
+        if (currentUser && users[currentUser]) {
+            const saldo = users[currentUser].saldo || 0;
+            document.getElementById('saldo').textContent = 'Rp ' + saldo.toLocaleString('id-ID');
+        }
+    }
+
+    function refreshSaldo() {
+        updateSaldo();
+        alert("✅ Saldo di-refresh dari Admin!");
+    }
+
+    // ==================== GAME SPACEMAN ====================
+    let gameInterval = null;
+    let multiplier = 1;
+    let isFlying = false;
+    let currentBet = 0;
+    let crashPoint = 0;
+
+    function startSpaceman() {
+        if (!currentUser) return alert("Login dulu!");
+        
+        currentBet = parseInt(document.getElementById('taruhan').value);
+        loadUsers();
+
+        if (currentBet < 1000) return alert("Minimal taruhan Rp 1.000!");
+        if (currentBet > (users[currentUser]?.saldo || 0)) return alert("Saldo tidak cukup!");
+
+        users[currentUser].saldo -= currentBet;
+        saveData();
+        updateSaldo();
+
+        isFlying = true;
+        multiplier = 1;
+        crashPoint = users[currentUser]?.forceCrash || (Math.random() * 8 + 1.5).toFixed(2);
+
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('cashoutBtn').style.display = 'inline-block';
+        document.getElementById('multiplier').textContent = "1.00x";
+
+        gameInterval = setInterval(() => {
+            multiplier += 0.06;
+            document.getElementById('multiplier').textContent = multiplier.toFixed(2) + "x";
+
+            if (multiplier >= crashPoint) {
+                crashGame();
+            }
+        }, 90);
+    }
+
+    function cashOut() {
+        if (!isFlying) return;
+        clearInterval(gameInterval);
+        isFlying = false;
+
+        const winAmount = Math.floor(currentBet * multiplier);
+        loadUsers();
+        users[currentUser].saldo += winAmount;
+        saveData();
+        updateSaldo();
+
+        alert(`🎉 CASH OUT BERHASIL!\nMultiplier: ${multiplier.toFixed(2)}x\nMenang: Rp ${winAmount.toLocaleString('id-ID')}`);
+        resetGame();
+    }
+
+    function crashGame() {
+        clearInterval(gameInterval);
+        isFlying = false;
+        alert(`💥 CRASH DI ${crashPoint}x\nKamu kalah Rp ${currentBet.toLocaleString('id-ID')}`);
+        resetGame();
+    }
+
+    function resetGame() {
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('cashoutBtn').style.display = 'none';
+        document.getElementById('multiplier').textContent = "1.00x";
+    }
+
+    // ==================== WITHDRAW ====================
+    function showWithdrawForm() {
+        if (!currentUser) return alert("Login dulu!");
+        document.getElementById('gamePage').style.display = 'none';
+        document.getElementById('withdrawForm').style.display = 'block';
+    }
+
+    function hideWithdrawForm() {
+        document.getElementById('withdrawForm').style.display = 'none';
+        document.getElementById('gamePage').style.display = 'block';
+    }
+
+    function submitWithdraw() {
+        const amount = parseInt(document.getElementById('withdrawAmount').value);
+        const ewallet = document.getElementById('ewalletType').value;
+        const number = document.getElementById('ewalletNumber').value.trim();
+        
+        if (!amount || !ewallet || !number) return alert("Lengkapi semua data!");
+        if (amount < 10000) return alert("Minimal penarikan Rp 10.000!");
+
+        loadUsers();
+        if (amount > (users[currentUser]?.saldo || 0)) return alert("Saldo tidak cukup!");
+
+        withdrawals.push({
+            username: currentUser,
+            amount,
+            ewallet,
+            number,
+            status: "Pending",
+            date: new Date().toLocaleString('id-ID')
+        });
+
+        users[currentUser].saldo -= amount;
+        saveData();
+        alert("✅ Permintaan penarikan dikirim ke Admin!");
+        hideWithdrawForm();
+        updateSaldo();
+    }
+
+    function topUp() { 
+        window.open('https://sociabuzz.com/bolapredik/tribe', '_blank'); 
+    }
+
+    // Load saat halaman dibuka
+    window.onload = function() {
+        loadUsers();
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+            currentUser = savedUser;
+            document.getElementById('authPage').style.display = 'none';
+            document.getElementById('gamePage').style.display = 'block';
+            document.getElementById('currUser').textContent = currentUser;
+            updateSaldo();
+        }
+    };
+</script>
+</body>
+</html>
