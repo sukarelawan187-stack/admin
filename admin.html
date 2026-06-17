@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 ADMIN SPACEMAN</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        body { font-family: 'Press Start 2P', sans-serif; background: #0a0a1f; color: white; text-align:center; margin:0; padding:15px; }
+        .container { max-width: 700px; margin:auto; background:#1a1a2e; padding:20px; border:4px solid #ef4444; border-radius:15px; }
+        button { width:100%; padding:16px; margin:10px 0; font-size:18px; border:none; border-radius:50px; cursor:pointer; font-weight:bold; }
+        .btn-green { background:#22c55e; color:black; }
+        .btn-red { background:#ef4444; color:white; }
+        .btn-blue { background:#22d3ee; color:black; }
+        .btn-yellow { background:#facc15; color:black; }
+        input, select { width:90%; padding:12px; margin:8px 0; background:#334155; color:white; border:none; border-radius:8px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>👑 ADMIN CONTROL</h1>
+    <p><strong>SPACEMAN ADMIN PANEL</strong></p>
+
+    <h3>Tambah Saldo User</h3>
+    <input type="text" id="targetUser" placeholder="Username">
+    <input type="number" id="addAmount" placeholder="Jumlah Saldo">
+    <button onclick="addSaldo()" class="btn-green">💰 TAMBAH SALDO</button>
+
+    <h3>Force Crash</h3>
+    <input type="text" id="forceUser" placeholder="Username">
+    <input type="number" id="forceMult" value="3.5" step="0.1" placeholder="Crash di berapa x">
+    <button onclick="setForceCrash()" class="btn-red">💥 SET FORCE CRASH</button>
+
+    <h3>Lihat Semua User</h3>
+    <button onclick="lihatSemuaUser()" class="btn-blue">👥 LIHAT SEMUA USER</button>
+
+    <h3>Permintaan Penarikan</h3>
+    <button onclick="lihatWithdrawals()" class="btn-yellow">💸 LIHAT TARIK SALDO</button>
+
+    <button onclick="backToGame()" style="background:#64748b;">← KEMBALI KE GAME</button>
+</div>
+
+<script>
+    let users = JSON.parse(localStorage.getItem('spacemanUsers')) || {};
+    let withdrawals = JSON.parse(localStorage.getItem('spacemanWithdrawals')) || [];
+
+    function saveData() {
+        localStorage.setItem('spacemanUsers', JSON.stringify(users));
+        localStorage.setItem('spacemanWithdrawals', JSON.stringify(withdrawals));
+    }
+
+    function addSaldo() {
+        const user = document.getElementById('targetUser').value.trim().toLowerCase();
+        const amount = parseInt(document.getElementById('addAmount').value);
+        if (!user || !amount) return alert("Isi username dan jumlah!");
+        
+        if (!users[user]) users[user] = {password: "123456", saldo: 0};
+        users[user].saldo = (users[user].saldo || 0) + amount;
+        saveData();
+        alert(`✅ Berhasil tambah Rp ${amount.toLocaleString('id-ID')} ke ${user}`);
+    }
+
+    function setForceCrash() {
+        const user = document.getElementById('forceUser').value.trim().toLowerCase();
+        const mult = parseFloat(document.getElementById('forceMult').value);
+        if (!user) return alert("Masukkan username!");
+        
+        if (!users[user]) users[user] = {password: "123456", saldo: 0};
+        users[user].forceCrash = mult;
+        saveData();
+        alert(`💥 Force crash ${user} diatur ke ${mult}x`);
+    }
+
+    function lihatSemuaUser() {
+        let text = "DAFTAR USER:\n\n";
+        Object.keys(users).forEach(u => {
+            text += `${u} → Rp ${(users[u].saldo || 0).toLocaleString('id-ID')}\n`;
+        });
+        alert(text || "Belum ada user");
+    }
+
+    function lihatWithdrawals() {
+        if (withdrawals.length === 0) return alert("Belum ada permintaan penarikan.");
+        
+        let text = "💸 PERMINTAAN PENARIKAN:\n\n";
+        withdrawals.forEach((w, i) => {
+            text += `${i+1}. ${w.username} - Rp ${w.amount.toLocaleString('id-ID')}\n`;
+            text += `   ${w.ewallet} | \( {w.number} ( \){w.status})\n\n`;
+        });
+        alert(text);
+    }
+
+    function backToGame() {
+        window.location.href = "index.html";
+    }
+</script>
+</body>
+</html>
